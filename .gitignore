@@ -185,3 +185,7 @@ htmlcov/
 pip-wheel-metadata/
 *.manifest
 *.spec
+
+# hidden files
+.*
+.*/
