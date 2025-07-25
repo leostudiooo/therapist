@@ -10,6 +10,16 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# Check if uv is installed, install if not
+if ! command -v uv &> /dev/null; then
+    echo "📦 Installing uv..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    source $HOME/.cargo/env
+    echo "✅ uv installed successfully!"
+else
+    echo "✅ uv is already installed"
+fi
+
 # Start backend server
 echo "🚀 Starting CSM AI Therapist backend server..."
 cd backend
