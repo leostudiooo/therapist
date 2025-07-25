@@ -1,0 +1,5 @@
+colorama==0.4.6
+pydispatch==1.1.0
+python-dispatch==0.2.2
+six==1.17.0
+websocket-client==1.8.0
