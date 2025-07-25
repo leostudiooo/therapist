@@ -11,5 +11,6 @@ dependencies = [
     "python-dispatch>=0.2.2",
     "python-dotenv>=1.1.1",
     "scipy>=1.16.0",
+    "speechrecognition>=3.14.3",
     "websocket-client>=1.8.0",
 ]

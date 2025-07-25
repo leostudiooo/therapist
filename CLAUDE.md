@@ -44,10 +44,35 @@ A BCI-connected AI therapist that uses EMOTIV Insight 2.0 EEG headset to collect
 - **UI Elements**: Audio impulse circle, emotional timeline with colored dots
 
 ### Backend
-- **Next.js**: API backend for streaming LLM and speech services
-- **Middleware**: AudioStream + EmotionStream → ContextStream → TherapistAI → ResponseStream
+- **FastAPI**: Backend using Sesame CSM (Conversational Speech Model) for end-to-end voice therapy
+- **CSM Architecture**: Audio → CSM Generator → Therapeutic Audio Response (single-step processing)
+- **Conversation Management**: Segment-based conversation history with full audio+text context
 
 ## Development Commands
+
+### CSM Voice Therapy System (Production Ready)
+```bash
+# Install CSM dependencies first
+./install_csm.sh
+
+# Quick start - runs both frontend and backend
+./run.sh
+
+# Manual setup:
+# 1. Copy .env.example to .env and add your HF_TOKEN
+# 2. Install CSM dependencies: ./install_csm.sh
+# 3. Authenticate with Hugging Face: huggingface-cli login
+# 4. Backend server (CSM-based FastAPI)
+cd backend
+export NO_TORCH_COMPILE=1
+uv sync --frozen
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# 5. Frontend server (Next.js) - in new terminal
+cd frontend
+npm install
+npm run dev
+```
 
 ### Python Environment Setup
 ```bash
