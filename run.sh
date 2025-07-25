@@ -14,10 +14,29 @@ fi
 if ! command -v uv &> /dev/null; then
     echo "📦 Installing uv..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
-    source $HOME/.cargo/env
-    echo "✅ uv installed successfully!"
+    
+    # Add uv to PATH - check multiple possible locations
+    if [ -f "$HOME/.cargo/env" ]; then
+        source "$HOME/.cargo/env"
+    elif [ -f "$HOME/.local/bin/uv" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+    
+    # Verify uv is now available
+    if command -v uv &> /dev/null; then
+        echo "✅ uv installed successfully!"
+    else
+        echo "❌ uv installation failed or not in PATH"
+        echo "💡 Please manually add uv to your PATH or run: export PATH=\"\$HOME/.local/bin:\$PATH\""
+        exit 1
+    fi
 else
     echo "✅ uv is already installed"
+fi
+
+# Ensure uv is in PATH (fallback)
+if ! command -v uv &> /dev/null; then
+    export PATH="$HOME/.local/bin:$PATH"
 fi
 
 # Start backend server
