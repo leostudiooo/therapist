@@ -1,0 +1,38 @@
+[project]
+name = "ai-therapist-backend"
+version = "0.1.0"
+description = "FastAPI backend for AI voice chat therapist with CSM integration"
+requires-python = ">=3.10"
+dependencies = [
+    # FastAPI and server dependencies
+    "fastapi==0.104.1",
+    "uvicorn[standard]==0.24.0",
+    "websockets==12.0",
+    "python-multipart==0.0.6",
+    "python-dotenv==1.0.0",
+    
+    # CSM core dependencies (from original CSM requirements)
+    "torch==2.4.0",
+    "torchaudio==2.4.0",
+    "tokenizers==0.21.0",
+    "transformers==4.49.0",
+    "huggingface_hub==0.28.1",
+    "moshi==0.2.2",
+    "torchtune==0.4.0",
+    "torchao==0.9.0",
+    "silentcipher @ git+https://github.com/SesameAILabs/silentcipher@master",
+    
+    # Audio processing and speech recognition
+    "numpy>=1.21.0",
+    "scipy>=1.7.0",
+    "SpeechRecognition>=3.10.0",
+    "pydub>=0.25.1",
+]
+
+[tool.uv]
+package = false
+dev-dependencies = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
