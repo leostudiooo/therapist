@@ -19,12 +19,12 @@ class Segment:
     audio: torch.Tensor
 
 
-def load_llama3_tokenizer():
+def load_llama3_tokenizer(local_path: str = None):
     """
     https://github.com/huggingface/transformers/issues/22794#issuecomment-2092623992
     """
-    tokenizer_name = "meta-llama/Llama-3.2-1B"
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    tokenizer_name = local_path or "meta-llama/Llama-3.2-1B"
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, local_files_only=bool(local_path))
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
     tokenizer._tokenizer.post_processor = TemplateProcessing(
@@ -40,15 +40,20 @@ class Generator:
     def __init__(
         self,
         model: Model,
+        tokenizer_path: str = None,
+        mimi_path: str = None,
     ):
         self._model = model
         self._model.setup_caches(1)
 
-        self._text_tokenizer = load_llama3_tokenizer()
+        self._text_tokenizer = load_llama3_tokenizer(tokenizer_path)
 
         device = next(model.parameters()).device
-        mimi_weight = hf_hub_download(loaders.DEFAULT_REPO, loaders.MIMI_NAME)
-        mimi = loaders.get_mimi(mimi_weight, device=device)
+        if mimi_path:
+            mimi = loaders.get_mimi(mimi_path, device=device)
+        else:
+            mimi_weight = hf_hub_download(loaders.DEFAULT_REPO, loaders.MIMI_NAME)
+            mimi = loaders.get_mimi(mimi_weight, device=device)
         mimi.set_num_codebooks(32)
         self._audio_tokenizer = mimi
 
@@ -173,4 +178,40 @@ def load_csm_1b(device: str = "cuda") -> Generator:
     model.to(device=device, dtype=torch.bfloat16)
 
     generator = Generator(model)
+    return generator
+
+
+def load_csm_1b_local(
+    model_path: str, 
+    device: str = "cuda", 
+    tokenizer_path: str = None, 
+    mimi_path: str = None
+) -> Generator:
+    """Load CSM model from local safetensors file"""
+    from safetensors.torch import load_file
+    
+    # Create model config for CSM-1B
+    config = ModelArgs(
+        backbone_flavor="llama-1B",
+        decoder_flavor="llama-1B", 
+        text_vocab_size=128256,
+        audio_vocab_size=2048,
+        audio_num_codebooks=32
+    )
+    
+    # Initialize model
+    model = Model(config)
+    
+    # Load weights from safetensors
+    state_dict = load_file(model_path)
+    model.load_state_dict(state_dict, strict=False)
+    
+    model.to(device=device, dtype=torch.bfloat16)
+    
+    # Create generator with local paths
+    generator = Generator(
+        model, 
+        tokenizer_path=tokenizer_path, 
+        mimi_path=mimi_path
+    )
     return generator
