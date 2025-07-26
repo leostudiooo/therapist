@@ -65,7 +65,7 @@ def main():
     print(f"Using device: {device}")
 
     # Load model
-    generator = load_csm_1b(device)
+    generator = load_csm_1b(device, use_local_tokenizer=True, local_tokenizer_path="../Llama-3.2-1B")
 
     # Prepare prompts
     prompt_a = prepare_prompt(
