@@ -71,7 +71,7 @@ class CSVReplayEngine:
             row: Single row from CSV DataFrame
             
         Returns:
-            Dictionary of normalized performance metrics
+            Dictionary of normalized performance metrics, or None if invalid
         """
         metrics = {}
         
@@ -84,15 +84,16 @@ class CSVReplayEngine:
             'interest': 'PM.Interest.Scaled'
         }
         
+        # Check if all required columns exist and have valid data
+        valid = True
         for metric_name, csv_column in metric_mapping.items():
-            if csv_column in row:
-                value = float(row[csv_column])
-                # Ensure value is between 0-1 (Emotiv scaled values)
-                metrics[metric_name] = max(0, min(1, value))
-            else:
-                metrics[metric_name] = 0.0
+            if csv_column not in row or pd.isna(row[csv_column]):
+                valid = False
+                break
+            value = float(row[csv_column])
+            metrics[metric_name] = max(0, min(1, value))
         
-        return metrics
+        return metrics if valid else None
     
     def replay(self, replay_speed: float = 1.0, start_time: float = 0.0,
                end_time: Optional[float] = None, output_file: Optional[str] = None) -> List[Dict]:
@@ -131,10 +132,18 @@ class CSVReplayEngine:
         
         print(f"Replaying {len(df_filtered)} data points...")
         
-        # Process each row
+        # Filter for valid PM data only
+        valid_rows = []
         for idx, row in df_filtered.iterrows():
-            timestamp = float(row['Timestamp'])
             metrics = self.extract_metrics(row)
+            if metrics is not None:
+                valid_rows.append((idx, row, metrics))
+        
+        print(f"Replaying {len(valid_rows)} valid data points...")
+        
+        events = []
+        for i, (idx, row, metrics) in enumerate(valid_rows):
+            timestamp = float(row['Timestamp'])
             
             # Analyze emotion
             emotion_event = self.analyzer.analyze_emotion(metrics, timestamp)
@@ -143,10 +152,10 @@ class CSVReplayEngine:
             # Print streaming JSON
             print(json.dumps(emotion_event))
             
-            # Control replay speed
-            if idx < len(df_filtered) - 1:
+            # Control replay speed between valid rows only
+            if i < len(valid_rows) - 1:
                 current_time = timestamp
-                next_time = float(df_filtered.iloc[idx + 1]['Timestamp'])
+                next_time = float(valid_rows[i + 1][1]['Timestamp'])
                 delay = (next_time - current_time) / replay_speed
                 
                 # Cap minimum delay to avoid too fast replay
@@ -209,6 +218,9 @@ class CSVReplayEngine:
             timestamp = float(row['Timestamp'])
             metrics = self.extract_metrics(row)
             
+            if metrics is None:  # Skip invalid rows
+                continue
+                
             emotion_event = self.analyzer.analyze_emotion(metrics, timestamp)
             events.append(emotion_event)
         
@@ -295,7 +307,7 @@ def quick_demo(csv_file: str = "recorded_samples/Record Sample_INSIGHT2_432033_2
     
     if events:
         print(f"Generated {len(events)} emotion events")
-        for event in events[:10]:  # Show first 10
+        for event in events[:100]:  # Show first 100
             print(json.dumps(event))
     
     return events

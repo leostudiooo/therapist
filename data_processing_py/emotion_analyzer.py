@@ -41,6 +41,9 @@ class EmotionAnalyzer:
         'bored':        [0.20, 0.15, 0.25, 0.60, 0.15, 0.25]
     }
     
+    # Map vector indices to metric names for easier access
+    METRIC_NAMES = ['engagement', 'excitement', 'stress', 'relaxation', 'interest', 'attention']
+    
     # Emotion descriptions for better understanding
     EMOTION_DESCRIPTIONS = {
         # Positive states
@@ -118,10 +121,8 @@ class EmotionAnalyzer:
         # Calculate confidence based on score strength
         confidence = emotion_scores[dominant_emotion]
         
-        # Check for significant emotion change
-        if self.previous_emotion and dominant_emotion != self.previous_emotion:
-            if abs(confidence - self._get_previous_confidence()) < self.min_change_threshold:
-                dominant_emotion = self.previous_emotion
+        # Allow emotion changes - don't get stuck on previous emotion
+        # Only apply smoothing if the change is very small and confidence is low
                 
         # Therapy-specific analysis
         crisis_level = self._calculate_crisis_level(normalized_metrics)
@@ -171,14 +172,16 @@ class EmotionAnalyzer:
         """Calculate similarity scores for each emotion category."""
         scores = {}
         
-        for emotion, requirements in self.EMOTIONS.items():
+        for emotion, vector in self.EMOTION_VECTORS.items():
             score = 0
             count = 0
             
-            for metric, target in requirements.items():
-                if metric in metrics:
+            # Map vector indices to metric names
+            for i, metric_name in enumerate(self.METRIC_NAMES):
+                if metric_name in metrics and i < len(vector):
+                    target = vector[i]
                     # Calculate similarity (1 - absolute difference)
-                    similarity = 1 - abs(metrics[metric] - target)
+                    similarity = 1 - abs(metrics[metric_name] - target)
                     score += similarity
                     count += 1
             
