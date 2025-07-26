@@ -165,55 +165,99 @@ class LiveEmotionStreamer:
         }
 
 
-class EmotionStreamServer:
+class EmotionWebSocketServer:
     """
-    HTTP server for streaming emotion events to clients.
+    WebSocket server for streaming emotion events to clients.
     """
     
-    def __init__(self, port: int = 8080):
+    def __init__(self, port: int = 8765):
         self.port = port
         self.streamer = None
-        self.server_thread = None
+        self.clients = set()
         
+    async def register_client(self, websocket):
+        """Register a new WebSocket client."""
+        self.clients.add(websocket)
+        print(f"Client connected. Total clients: {len(self.clients)}")
+        
+    async def unregister_client(self, websocket):
+        """Unregister a WebSocket client."""
+        self.clients.discard(websocket)
+        print(f"Client disconnected. Total clients: {len(self.clients)}")
+        
+    async def broadcast_emotion(self, event):
+        """Broadcast emotion event to all connected clients."""
+        if self.clients:
+            message = json.dumps(event)
+            disconnected = set()
+            
+            for client in self.clients:
+                try:
+                    await client.send(message)
+                except Exception as e:
+                    disconnected.add(client)
+            
+            # Remove disconnected clients
+            for client in disconnected:
+                self.clients.discard(client)
+    
+    async def handle_client(self, websocket):
+        """Handle WebSocket client connection."""
+        await self.register_client(websocket)
+        try:
+            await websocket.wait_closed()
+        finally:
+            await self.unregister_client(websocket)
+    
     def start_server(self, app_client_id: str, app_client_secret: str):
-        """Start emotion streaming server."""
-        from http.server import HTTPServer, BaseHTTPRequestHandler
+        """Start WebSocket emotion streaming server."""
+        import asyncio
+        import websockets
+        from concurrent.futures import ThreadPoolExecutor
         import threading
         
+        # Initialize emotion streamer
         self.streamer = LiveEmotionStreamer(app_client_id, app_client_secret)
         
-        class EmotionHandler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Cache-Control', 'no-cache')
-                self.send_header('Connection', 'close')
-                self.end_headers()
-                
-                # Start streaming
-                def send_event(event):
-                    try:
-                        self.wfile.write(f"{json.dumps(event)}\n".encode())
-                        self.wfile.flush()
-                    except:
-                        pass
-                
-                self.streamer.set_output_callback(send_event)
-                self.streamer.start_streaming()
-                
-                # Keep connection open
-                try:
-                    while True:
-                        time.sleep(1)
-                except:
-                    pass
+        # Create event loop for this thread
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
         
-        self.server = HTTPServer(('localhost', self.port), EmotionHandler)
-        self.server_thread = threading.Thread(target=self.server.serve_forever)
-        self.server_thread.daemon = True
-        self.server_thread.start()
+        # Set up callback to broadcast emotions
+        def emotion_callback(event):
+            # Schedule coroutine in the event loop
+            if self.clients and self.loop.is_running():
+                asyncio.run_coroutine_threadsafe(self.broadcast_emotion(event), self.loop)
         
-        print(f"Emotion stream server started on http://localhost:{self.port}")
+        self.streamer.set_output_callback(emotion_callback)
+        
+        # Start emotion streaming in background thread
+        def start_emotion_streaming():
+            self.streamer.start_streaming(['met'])
+        
+        streaming_thread = threading.Thread(target=start_emotion_streaming, daemon=True)
+        streaming_thread.start()
+        
+        # Start WebSocket server
+        print(f"Starting WebSocket emotion server on ws://localhost:{self.port}")
+        
+        async def main():
+            try:
+                async with websockets.serve(self.handle_client, "localhost", self.port):
+                    print(f"WebSocket server listening on ws://localhost:{self.port}")
+                    await asyncio.Future()  # Run forever
+            except OSError as e:
+                if "Address already in use" in str(e):
+                    print(f"Port {self.port} is already in use. Try a different port or kill existing process.")
+                    return
+                raise
+        
+        try:
+            self.loop.run_until_complete(main())
+        except KeyboardInterrupt:
+            print("\nShutting down WebSocket server...")
+        finally:
+            self.loop.close()
 
 
 def demo_live_streaming():
@@ -256,5 +300,37 @@ def demo_live_streaming():
         print(f"Error: {e}")
 
 
+def demo_websocket_streaming():
+    """Demonstrate WebSocket emotion streaming server."""
+    import dotenv
+    
+    # Load credentials from .env
+    app_client_id = dotenv.get_key(dotenv_path='.env', key_to_get='EMOTIV_APP_CLIENT_ID')
+    app_client_secret = dotenv.get_key(dotenv_path='.env', key_to_get='EMOTIV_APP_CLIENT_SECRET')
+    
+    if not app_client_id or not app_client_secret:
+        print("Please set EMOTIV_APP_CLIENT_ID and EMOTIV_APP_CLIENT_SECRET in .env file")
+        return
+    
+    print("=== WebSocket Emotion Streaming Server ===")
+    print("Starting WebSocket server for live emotion streaming...")
+    print("Connect to ws://localhost:8765 to receive emotion events")
+    print()
+    
+    server = EmotionWebSocketServer(port=8765)
+    
+    try:
+        server.start_server(app_client_id, app_client_secret)
+    except KeyboardInterrupt:
+        print("\nShutting down WebSocket server...")
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 if __name__ == "__main__":
-    demo_live_streaming()
+    import sys
+    
+    if len(sys.argv) > 1 and sys.argv[1] == "websocket":
+        demo_websocket_streaming()
+    else:
+        demo_live_streaming()
