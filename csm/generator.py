@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import torch
 import torchaudio
 from huggingface_hub import hf_hub_download
-from models import Model
+from models import Model, ModelArgs
 from moshi.models import loaders
 from tokenizers.processors import TemplateProcessing
 from transformers import AutoTokenizer
