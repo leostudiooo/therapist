@@ -1,6 +1,10 @@
-# Therapist TEN Agent - Docker Setup
+# Therapist TEN Agent - BCI-Connected AI Therapy System
 
-This directory contains the TEN (Ten Agent Framework) implementation for the AI therapist, configured to be Docker-composeable like the AI Agents in the ten-framework.
+This directory contains the complete TEN (Ten Agent Framework) implementation for the AI therapist, integrated with EMOTIV Insight 2.0 EEG headset for brain-computer interface therapy sessions.
+
+## System Overview
+
+The therapist agent combines real-time EEG data collection with advanced conversational AI to provide personalized therapeutic responses based on the user's emotional and cognitive states detected through brain activity.
 
 ## Quick Start
 
@@ -19,6 +23,24 @@ This directory contains the TEN (Ten Agent Framework) implementation for the AI 
    - **API Server**: http://localhost:8080
    - **Graph Designer**: http://localhost:49483
    - **Demo Interface**: http://localhost:3002
+   - **CSM Voice Therapy**: http://localhost:8000 (FastAPI backend)
+
+## Core Architecture
+
+### Data Collection Layer
+- **EMOTIV Cortex SDK**: WebSocket-based EEG data collection
+- **Data Streams**: EEG, band power (Theta, Alpha, Beta, Gamma), performance metrics
+- **Emotion Detection**: Real-time processing of Attention, Engagement, Excitement, Interest, Relaxation, Stress
+
+### AI Therapy Components
+- **TEN Framework**: Core agent orchestration and conversation management
+- **CSM Integration**: Sesame Conversational Speech Model for end-to-end voice therapy
+- **Emotion-Aware Responses**: Therapeutic content adapts to detected emotional states
+
+### Frontend Interfaces
+- **TEN Demo**: Interactive testing interface at localhost:3002
+- **CSM Voice Chat**: Advanced voice therapy interface at localhost:8000
+- **Real-time Visualization**: Live emotional timeline with colored dots
 
 ## Services
 
@@ -27,11 +49,19 @@ This directory contains the TEN (Ten Agent Framework) implementation for the AI 
 - **Ports**: 8080 (API), 49483 (Graph Designer)
 - **Volumes**: Mounts current directory for development
 - **Purpose**: Development server with live code reloading
+- **EEG Integration**: Connects to EMOTIV Cortex API for real-time data
 
 ### therapist_agent_demo
 - **Image**: ghcr.io/ten-framework/ten_agent_demo:0.10.6-19-g8ecacde4
 - **Port**: 3002 (mapped to container's 3000)
 - **Purpose**: Demo interface for testing the therapist agent
+- **Features**: Audio impulse circle, emotional timeline visualization
+
+### CSM Voice Therapy (Additional Service)
+- **FastAPI Backend**: Port 8000
+- **Sesame CSM**: Single-step audio processing (audio → CSM → therapeutic response)
+- **Conversation Memory**: Full audio+text context retention
+- **Voice-First**: End-to-end voice therapy without text transcription
 
 ## Environment Variables
 
@@ -42,7 +72,69 @@ Required variables in `.env`:
 - `EMOTIV_APP_CLIENT_ID`: EMOTIV Cortex API client ID
 - `EMOTIV_APP_CLIENT_SECRET`: EMOTIV Cortex API client secret
 - `OPENAI_API_KEY`: OpenAI API key (if using OpenAI features)
-- `HF_TOKEN`: Hugging Face API token
+- `HF_TOKEN`: Hugging Face API token (required for CSM model access)
+
+## EEG Integration Setup
+
+1. **EMOTIV Requirements**:
+   - EMOTIV Insight 2.0 headset
+   - EMOTIV Launcher installed and running
+   - Valid EMOTIV API credentials
+
+2. **Data Collection**:
+   ```bash
+   # Start EEG data collection (outside Docker)
+   cd data_processing_py
+   python main.py
+   
+   # Real-time emotion detection
+   python live_emotion.py
+   
+   # Record session for analysis
+   python record.py
+   ```
+
+3. **Data Streams**:
+   - Raw EEG channels
+   - Band power (Theta, Alpha, Beta, Gamma)
+   - Performance metrics (Attention, Engagement, etc.)
+   - Emotional quotient metrics
+
+## Development Modes
+
+### Docker Development (Recommended)
+```bash
+# Full stack with Docker
+docker-compose up -d
+
+# View logs
+docker-compose logs -f therapist_agent_dev
+```
+
+### Local Development (Advanced)
+```bash
+# Install CSM dependencies
+./install_csm.sh
+
+# Copy environment
+cp .env.example .env
+# Fill in your API keys
+
+# Backend (CSM Voice Therapy)
+cd backend
+export NO_TORCH_COMPILE=1
+uv sync --frozen
+uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# Frontend (React)
+cd frontend
+npm install
+npm run dev
+
+# TEN Agent (separate terminal)
+./scripts/install_deps_and_build.sh
+./bin/ten_agent
+```
 
 ## Development
 
