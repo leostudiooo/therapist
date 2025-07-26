@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 import torch
 import torchaudio
 from huggingface_hub import hf_hub_download
-from models import Model, ModelArgs
+from models import Model
 from moshi.models import loaders
 from tokenizers.processors import TemplateProcessing
 from transformers import AutoTokenizer
@@ -19,12 +19,24 @@ class Segment:
     audio: torch.Tensor
 
 
-def load_llama3_tokenizer(local_path: str = None):
+def load_llama3_tokenizer(use_local: bool = False, local_path: str = None):
     """
+    Load Llama3 tokenizer from Hugging Face or local path
+    
+    Args:
+        use_local: Whether to use local tokenizer instead of downloading
+        local_path: Path to local tokenizer directory (if use_local=True)
+    
     https://github.com/huggingface/transformers/issues/22794#issuecomment-2092623992
     """
-    tokenizer_name = local_path or "meta-llama/Llama-3.2-1B"
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, local_files_only=bool(local_path))
+    if use_local:
+        if local_path is None:
+            local_path = "./models/tokenizers/llama-3.2-1b"
+        tokenizer = AutoTokenizer.from_pretrained(local_path, local_files_only=True)
+    else:
+        tokenizer_name = "meta-llama/Llama-3.2-1B"
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    
     bos = tokenizer.bos_token
     eos = tokenizer.eos_token
     tokenizer._tokenizer.post_processor = TemplateProcessing(
@@ -40,17 +52,21 @@ class Generator:
     def __init__(
         self,
         model: Model,
-        tokenizer_path: str = None,
-        mimi_path: str = None,
+        use_local_tokenizer: bool = False,
+        local_tokenizer_path: str = None,
+        local_mimi_path: str = None,
     ):
         self._model = model
         self._model.setup_caches(1)
 
-        self._text_tokenizer = load_llama3_tokenizer(tokenizer_path)
+        self._text_tokenizer = load_llama3_tokenizer(
+            use_local=use_local_tokenizer,
+            local_path=local_tokenizer_path
+        )
 
         device = next(model.parameters()).device
-        if mimi_path:
-            mimi = loaders.get_mimi(mimi_path, device=device)
+        if local_mimi_path:
+            mimi = loaders.get_mimi(local_mimi_path, device=device)
         else:
             mimi_weight = hf_hub_download(loaders.DEFAULT_REPO, loaders.MIMI_NAME)
             mimi = loaders.get_mimi(mimi_weight, device=device)
@@ -173,46 +189,13 @@ class Generator:
         return audio
 
 
-def load_csm_1b(device: str = "cuda") -> Generator:
+def load_csm_1b(device: str = "cuda", use_local_tokenizer: bool = False, local_tokenizer_path: str = None) -> Generator:
     model = Model.from_pretrained("sesame/csm-1b")
     model.to(device=device, dtype=torch.bfloat16)
 
-    generator = Generator(model)
-    return generator
-
-
-def load_csm_1b_local(
-    model_path: str, 
-    device: str = "cuda", 
-    local_tokenizer_path: str = None, 
-    mimi_path: str = None
-) -> Generator:
-    """Load CSM model from local safetensors file"""
-    from safetensors.torch import load_file
-    
-    # Create model config for CSM-1B
-    config = ModelArgs(
-        backbone_flavor="llama-1B",
-        decoder_flavor="llama-1B", 
-        text_vocab_size=128256,
-        audio_vocab_size=2048,
-        audio_num_codebooks=32
-    )
-    
-    # Initialize model
-    model = Model(config)
-    
-    # Load weights from safetensors
-    state_dict = load_file(model_path)
-    model.load_state_dict(state_dict, strict=False)
-    
-    model.to(device=device, dtype=torch.bfloat16)
-    
-    # Create generator with local paths
     generator = Generator(
         model, 
-        use_local_tokenizer=bool(local_tokenizer_path),
-        local_tokenizer_path=local_tokenizer_path,
-        local_mimi_path=mimi_path
+        use_local_tokenizer=use_local_tokenizer,
+        local_tokenizer_path=local_tokenizer_path
     )
     return generator
