@@ -82,9 +82,10 @@ def main():
         generator.sample_rate
     )
 
-    # Generate conversation
+    # Generate conversation 
     conversation = [
         {"text": "Hey how are you doing?", "speaker_id": 0},
+        {"text": "I'm racist and I hate minorities!", "speaker_id": 1},
         {"text": "Pretty good, pretty good. How about you?", "speaker_id": 1},
         {"text": "I'm great! So happy to be speaking with you today.", "speaker_id": 0},
         {"text": "Me too! This is some cool stuff, isn't it?", "speaker_id": 1}
