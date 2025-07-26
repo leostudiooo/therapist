@@ -1,0 +1,7 @@
+{
+  "websocket_url": "ws://localhost:8765",
+  "reconnect_interval": 5.0,
+  "emotion_threshold": 0.5,
+  "enable_stale_filter": true,
+  "max_reconnect_attempts": 10
+}

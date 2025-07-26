@@ -1,0 +1,23 @@
+{
+  "type": "app",
+  "name": "emotion_aware_therapist",
+  "version": "0.1.0",
+  "dependencies": [
+    {
+      "type": "extension",
+      "name": "agora_rtc"
+    },
+    {
+      "type": "extension", 
+      "name": "azure_v2v_python"
+    },
+    {
+      "type": "extension",
+      "name": "emotion_bridge_python"
+    },
+    {
+      "type": "extension",
+      "name": "message_collector"
+    }
+  ]
+}
