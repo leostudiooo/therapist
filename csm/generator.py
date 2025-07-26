@@ -189,7 +189,7 @@ class Generator:
         return audio
 
 
-def load_csm_1b(device: str = "cuda") -> Generator:
+def load_csm_1b(device: str = "cuda", use_local_tokenizer: bool = False, local_tokenizer_path: str = None) -> Generator:
     model = Model.from_pretrained("sesame/csm-1b")
     model.to(device=device, dtype=torch.bfloat16)
 
