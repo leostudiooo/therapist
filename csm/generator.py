@@ -184,7 +184,7 @@ def load_csm_1b(device: str = "cuda") -> Generator:
 def load_csm_1b_local(
     model_path: str, 
     device: str = "cuda", 
-    tokenizer_path: str = None, 
+    local_tokenizer_path: str = None, 
     mimi_path: str = None
 ) -> Generator:
     """Load CSM model from local safetensors file"""
@@ -211,7 +211,8 @@ def load_csm_1b_local(
     # Create generator with local paths
     generator = Generator(
         model, 
-        tokenizer_path=tokenizer_path, 
-        mimi_path=mimi_path
+        use_local_tokenizer=bool(local_tokenizer_path),
+        local_tokenizer_path=local_tokenizer_path,
+        local_mimi_path=mimi_path
     )
     return generator
